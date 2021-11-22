@@ -11,7 +11,7 @@ contract Will {
     constructor(string memory _username) {
         string memory empty = " ";
         if (keccak256(bytes(_username)) == keccak256(bytes(empty))) {
-            // check if it is initialization
+            // check if it is first initialization
             console.log("Initializing...");
         }
         console.log("Deployed a contract");
