@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
-import Greeter from "./artifacts/contracts/Greeter.sol/Greeter.json";
+import Will from "./artifacts/contracts/Greeter.sol/Greeter.json";
 import './App.css';
 
 function App() {
-  const [userAccount, setUserAccount] = useState("");
-  const [userName, setUserName] = useState("");
+  const [userAccount, setUserAccount] = useState(" ");
+  const [userName, setUserName] = useState(" ");
   const [ethereumPrivKey, setEthereumPrivKey] = useState("");
   const [successor, setSuccessor] = useState([]); // list of ethereum priv keys
-  const willAddress = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
+  const willAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
   const requestAccount = async () => {
     // connect to Metamask wallet of user when we need to create a transaction
@@ -16,12 +16,18 @@ function App() {
   }
 
   const submitWill = async () => {
-    const Will = await ethers.getContractFactory("Will");
-    const userWill = await Greeter.deploy(userName, ethereumPrivKey);
-  
-    await userWill.deployed();
-  
-    console.log("Will deployed to:", userWill.address);
+    if (typeof window.ethereum === "undefined") {
+      await requestAccount();
+    }
+    if (userName.length === 0 || ethereumPrivKey.length === 0) {
+      console.log("error")
+      return;
+    }
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const newWill = new ethers.Contract(willAddress, Will.abi, provider);
+    newWill.setUserName(userName);
+    newWill.setEthereumPrivKey(ethereumPrivKey);
+    console.log("Will submitted");
   }
 
   return (
@@ -32,7 +38,8 @@ function App() {
 
         <input onChange={(e) => setUserName(e.target.value)} placeholder="User Name" required={true}></input>
         <input onChange={(e) => setEthereumPrivKey(e.target.value)} placeholder="Ethereum Priv Key" required={true}></input>
-        <button style={{ padding: "5px", margin: "8px", height: "50px", width: "100px", fontSize: "20px"}} onClick={submitWill}>Submit</button>
+        <button style={{ padding: "5px", margin: "8px", height: "50px", width: "100px", fontSize: "20px"}} onClick={submitWill}>Confirm</button>
+        <button style={{ padding: "5px", margin: "8px", height: "50px", width: "100px", fontSize: "20px"}} onClick={() => console.log("username is ", userName)}>Retrieve</button>
       </header>
     </div>
   );

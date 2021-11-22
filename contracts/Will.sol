@@ -9,7 +9,12 @@ contract Will {
     string private ethereumKey;
 
     constructor(string memory _username) {
-        console.log("Deploying a Greeter with greeting:", _greeting);
+        string memory empty = " ";
+        if (keccak256(bytes(_username)) == keccak256(bytes(empty))) {
+            // check if it is initialization
+            console.log("Initializing...");
+        }
+        console.log("Deploying a contract");
         username = _username;
     }
 
@@ -17,12 +22,12 @@ contract Will {
         return username;
     }
 
-    function setUserName(string _username) public {
-        console.log("Username changed from '%s' to '%s'", this.username, _username);
+    function setUserName(string memory _username) public {
+        console.log("Username changed from '%s' to '%s'", username, _username);
         username = _username;
     }
 
-    function setEthereumKey(string _ethereumKey) public {
+    function setEthereumKey(string memory _ethereumKey) public {
         ethereumKey = _ethereumKey;
     }
 }
