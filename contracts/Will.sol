@@ -14,7 +14,7 @@ contract Will {
             // check if it is initialization
             console.log("Initializing...");
         }
-        console.log("Deploying a contract");
+        console.log("Deployed a contract");
         username = _username;
     }
 
