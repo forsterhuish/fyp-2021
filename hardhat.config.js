@@ -23,15 +23,12 @@ module.exports = {
   },
   networks: {
     // deploy to testnet
-    hardhat: {
-      chainId: 1337, 
-    }, 
-    // ropsten: {
-    //   url: "https://ropsten.infura.io/v3/67336007058e454e99f4a4ffa1618167", 
-    //   accounts: [`0x${process.env.ACCOUNT_KEY_TESTATOR}`] // 0x appended with private key we work with
-    // }
-  },
-  namedAccounts: {
-    deployer: 0,
+    // hardhat: {
+    //   chainId: 1337, 
+    // }, 
+    ropsten: {
+      url: "https://ropsten.infura.io/v3/67336007058e454e99f4a4ffa1618167", 
+      accounts: ['0x075ab938a38732556259527c72a80f69b04a305f69743a6a6943746811112df5'] // 0x appended with private key we work with
+    }
   },
 };

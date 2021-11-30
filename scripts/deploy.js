@@ -26,7 +26,7 @@ async function main() {
 
   await will.deployed();
 
-  console.log("Will deployed to:", will.address);
+  console.log("Will deployed to: ", will.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

@@ -13,6 +13,8 @@
     "dotenv": "^10.0.0",
     "ethers": "^5.0.32",
     "hardhat-typechain": "^0.3.5",
+    "jsrsasign": "^10.5.0",
+    "jsrsasign-util": "^1.0.5",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-scripts": "4.0.3",
@@ -21,16 +23,16 @@
     "web-vitals": "^1.0.1"
   },
   "scripts": {
-    "react-start": "react-scripts start",
+    "react-start": "HTTPS=true SSL_CRT_FILE=./.cert/cert.pem SSL_KEY_FILE=./.cert/key.pem react-scripts start",
     "node": "npx hardhat node",
-    "start": "concurrently \"rm -r src/artifacts\" \"npm run node\" \"npm run initialize\" \"npm run react-start\"",
+    "start-local": "concurrently \"rm -r src/artifacts\" \"npm run node\" \"npm run initialize\" \"npm run react-start\"",
     "start-normal": "npm run react-start",
-    "start-ropsten": "concurrently \"npm run initialize-ropsten\" \"npm run react-start\"",
+    "start": "concurrently \"rm -r src/artifacts\" \"npm run initialize-ropsten\" \"npm run react-start\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "initialize": "npx hardhat run scripts/deploy.js --network localhost",
-    "initialize-ropsten": "node scripts/deploy.js --network ropsten"
+    "initialize-ropsten": "npx hardhat run scripts/deploy.js --network ropsten"
   },
   "eslintConfig": {
     "extends": [
