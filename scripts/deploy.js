@@ -13,9 +13,16 @@ async function main() {
   // manually to make sure everything is compiled
   await hre.run('compile');
 
+  const [deployer] = await hre.ethers.getSigners();
+
+  console.log(
+    "Deploying contracts with the account:",
+    deployer.address
+  );
+
   // We get the contract to deploy
   const Will = await hre.ethers.getContractFactory("Will");
-  const will = await Will.deploy("");
+  const will = await Will.deploy(" ");
 
   await will.deployed();
 
