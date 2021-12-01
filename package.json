@@ -25,7 +25,7 @@
     "web-vitals": "^1.0.1"
   },
   "scripts": {
-    "react-start": "HTTPS=true SSL_CRT_FILE=./.cert/cert.pem SSL_KEY_FILE=./.cert/key.pem react-scripts start",
+    "react-start": "react-scripts start",
     "node": "npx hardhat node",
     "start-local": "concurrently \"rm -r src/artifacts\" \"npm run node\" \"npm run initialize\" \"npm run react-start\"",
     "start-normal": "npm run react-start",

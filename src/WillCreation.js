@@ -92,9 +92,9 @@ function WillCreation() {
       await setSig.wait();
       await setSuc.wait();
       console.log("Will submitted");
-      const msg = await getMessage();
       getSuccessors();
-
+      getPubKeySig();
+      const msg = await getMessage();
       // test only
       const ori_message = KJUR.crypto.Cipher.decrypt(msg, userEncKeyPair.current.prv);
       console.log("Original Message: ", ori_message); 
@@ -121,8 +121,8 @@ function WillCreation() {
       const will = new ethers.Contract(willAddress, Will.abi, provider); // new instance of contract
       try {
         const data = await will.getPubKeySig(); // greeting value
-        // console.log("Public key: ", data);
-        return data;
+        console.log("Public key Signature: ", data);
+        // return data;
       } catch (error) {
         console.log(error);
       }
@@ -165,8 +165,8 @@ function WillCreation() {
     const keypair = KEYUTIL.generateKeypair("RSA", 2048);
     userEncKeyPair.current.pub = KEYUTIL.getKey(keypair.pubKeyObj);
     userEncKeyPair.current.prv = KEYUTIL.getKey(keypair.prvKeyObj);
-    console.log("Public key RSA: " + hextob64(userEncKeyPair.current.pub));
-    console.log("Private key RSA: " + hextob64(userEncKeyPair.current.prv));
+    console.log("Public key RSA: " + userEncKeyPair.current.pub);
+    console.log("Private key RSA: " + userEncKeyPair.current.prv);
     // const salt = CryptoJS.lib.WordArray.random(128 / 8);
     // const key = CryptoJS.PBKDF2("fyp2021enc", salt, {
     //   keySize: 256 / 32, 
@@ -178,8 +178,8 @@ function WillCreation() {
 
   const generateSigKeyPair = () => {
     if (userSigKeyPair.current.pub && userSigKeyPair.current.prv) {
-      console.log("Public key: " + hextob64(userSigKeyPair.current.pub));
-      console.log("Private key: " + hextob64(userSigKeyPair.current.prv));
+      console.log("Public key: " + userSigKeyPair.current.pub);
+      console.log("Private key: " + userSigKeyPair.current.prv);
       return;
     }
     // const ec = new KJUR.crypto.ECDSA({ curve: "secp256r1" });
@@ -291,7 +291,7 @@ function WillCreation() {
         <button
           style={{
             padding: "1px",
-            margin: "8px",
+            // margin: "8px",
             height: "50px",
             width: "280px",
             fontSize: "20px",
