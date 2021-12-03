@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { ethers } from "ethers";
 import Will from "./artifacts/contracts/Will.sol/Will.json";
 import "./App.css";
-import { hextoArrayBuffer, hextob64, hextorstr, KEYUTIL, KJUR } from "jsrsasign";
+import { KEYUTIL, KJUR } from "jsrsasign";
 // import CryptoJS from "crypto-js";
 // const forge = require("node-forge"); 
 require("jsrsasign");
@@ -30,7 +30,15 @@ function WillCreation() {
   const addSuccessors = () => {
     // setSuccessors(prev => [...prev, successorInput.current]);
     successors.current.push(successorInput.current);
-    console.log(successors.current);
+    console.log("Current Successors: ", successors.current);
+    // alert("Successor added");
+  }
+
+  const removeSuccessors = () => {
+    if (successors.current.length <= 0) return;
+    successors.current.splice(0, successors.current.length);
+    console.log("Current Successors: ", successors.current);
+    // alert("All successors removed");
   }
 
   const requestAccount = async () => {
@@ -71,11 +79,12 @@ function WillCreation() {
       ec.init(userSigKeyPair.current.prv);
       ec.updateString(message);
       let msg_sig = ec.sign();
+      console.log("Message Signature: ", msg_sig)
 
       if (!userEncKeyPair.current.pub || !userEncKeyPair.current.prv) {
         console.log("Initialize key")
         generateEncKeyPair();
-        const setKey = await newWill.setPubKeySig(userSigKeyPair.current.pub);
+        const setKey = await newWill.setPubKeySig(userSigKeyPair.current.pub.pubKeyHex);
         await setKey.wait();
       }
       // let iv_msg = CryptoJS.enc.Utf8.parse("1155125110ffffff1155125110ffffff")
@@ -94,7 +103,9 @@ function WillCreation() {
       console.log("Will submitted");
       getSuccessors();
       getPubKeySig();
+      getSignature();
       const msg = await getMessage();
+      
       // test only
       const ori_message = KJUR.crypto.Cipher.decrypt(msg, userEncKeyPair.current.prv);
       console.log("Original Message: ", ori_message); 
@@ -106,8 +117,8 @@ function WillCreation() {
       const provider = new ethers.providers.Web3Provider(window.ethereum); // to access blockchain data
       const will = new ethers.Contract(willAddress, Will.abi, provider); // new instance of contract
       try {
-        const data = await will.getMessage(); // greeting value
-        console.log("Message: ", data);
+        const data = await will.getMessage();
+        console.log("Message (Encrypted): ", data);
         return data;
       } catch (error) {
         console.log(error);
@@ -120,8 +131,8 @@ function WillCreation() {
       const provider = new ethers.providers.Web3Provider(window.ethereum); // to access blockchain data
       const will = new ethers.Contract(willAddress, Will.abi, provider); // new instance of contract
       try {
-        const data = await will.getPubKeySig(); // greeting value
-        console.log("Public key Signature: ", data);
+        const data = await will.getPubKeySig();
+        console.log("Public key for Signature: ", data);
         // return data;
       } catch (error) {
         console.log(error);
@@ -129,12 +140,25 @@ function WillCreation() {
     }
   };
 
+  const getSignature = async () => {
+    if (typeof window.ethereum !== "undefined") {
+      const provider = new ethers.providers.Web3Provider(window.ethereum); // to access blockchain data
+      const will = new ethers.Contract(willAddress, Will.abi, provider); // new instance of contract
+      try {
+        const data = await will.getSignature();
+        console.log("Signature for message: ", data);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  }
+
   const getSuccessors = async () => {
     if (typeof window.ethereum !== "undefined") {
       const provider = new ethers.providers.Web3Provider(window.ethereum); // to access blockchain data
       const will = new ethers.Contract(willAddress, Will.abi, provider); // new instance of contract
       try {
-        const data = await will.getSuccessors(); // greeting value
+        const data = await will.getSuccessors();
         console.log("List of Successors: ", data);
       } catch (error) {
         console.log(error);
@@ -158,15 +182,17 @@ function WillCreation() {
   const generateEncKeyPair = () => {
     // for encrypting message of will before uploading
     if (userEncKeyPair.current.pub && userEncKeyPair.current.prv) {
-      console.log("Public key RSA: " + hextob64(userEncKeyPair.current.pub));
-      console.log("Private key RSA: " + hextob64(userEncKeyPair.current.prv));
+      // console.log("Public key RSA: " + userEncKeyPair.current.pub.pubKeyHex);
+      // console.log("Private key RSA: " + userEncKeyPair.current.prv.prvKeyHex);
+      console.log("Key pair already generated. ")
       return;
     }
     const keypair = KEYUTIL.generateKeypair("RSA", 2048);
     userEncKeyPair.current.pub = KEYUTIL.getKey(keypair.pubKeyObj);
     userEncKeyPair.current.prv = KEYUTIL.getKey(keypair.prvKeyObj);
-    console.log("Public key RSA: " + userEncKeyPair.current.pub);
-    console.log("Private key RSA: " + userEncKeyPair.current.prv);
+    console.log("RSA key pair: ", keypair)
+    // console.log("Public key RSA: " + userEncKeyPair.current.pub.pubKeyHex);
+    // console.log("Private key RSA: " + userEncKeyPair.current.prv.prvKeyHex);
     // const salt = CryptoJS.lib.WordArray.random(128 / 8);
     // const key = CryptoJS.PBKDF2("fyp2021enc", salt, {
     //   keySize: 256 / 32, 
@@ -178,8 +204,8 @@ function WillCreation() {
 
   const generateSigKeyPair = () => {
     if (userSigKeyPair.current.pub && userSigKeyPair.current.prv) {
-      console.log("Public key: " + userSigKeyPair.current.pub);
-      console.log("Private key: " + userSigKeyPair.current.prv);
+      console.log("Public key: " + userSigKeyPair.current.pub.pubKeyHex);
+      console.log("Private key: " + userSigKeyPair.current.prv.prvKeyHex);
       return;
     }
     // const ec = new KJUR.crypto.ECDSA({ curve: "secp256r1" });
@@ -206,8 +232,8 @@ function WillCreation() {
     //   pub: keypair.ecpubhex, 
     //   prv: keypair.ecprvhex
     // }))
-    console.log("Public key: " + hextob64(userSigKeyPair.current.pub));
-    console.log("Private key: " + hextob64(userSigKeyPair.current.prv));
+    console.log("Public key: " + userSigKeyPair.current.pub.pubKeyHex);
+    console.log("Private key: " + userSigKeyPair.current.prv.prvKeyHex);
     // alert("Public key: " + keypair.ecpubhex);
     // alert("Private key: " + keypair.ecprvhex);
     alert("Signature Key pair generated. Please keep the private key confidential. ");
@@ -263,6 +289,20 @@ function WillCreation() {
           onClick={addSuccessors}
         >
           Add Successor
+        </button>
+        <button
+          style={{
+            marginTop: "2em",
+            padding: "1px",
+            margin: "8px",
+            height: "50px",
+            width: "200px",
+            fontSize: "16px",
+            alignItems: "center",
+          }}
+          onClick={removeSuccessors}
+        >
+          Remove All Successors
         </button>
         <button
           style={{

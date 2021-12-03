@@ -4,11 +4,11 @@ pragma solidity ^0.8.3;
 import "hardhat/console.sol";
 
 contract Will {
-    // string private greeting;
+    // states
     string private userAccount;
-    string private pubKeySig = ""; // for signature
+    string private pubKeySig; // pub key for signature
     string private message = "";
-    string private signature = "";
+    string private signature = ""; // msg signature
     string[] private successors;
 
     constructor(string memory _userAccount) {
@@ -30,6 +30,10 @@ contract Will {
 
     function getSuccessors() public view returns (string[] memory) {
         return successors;
+    }
+
+    function getSignature() public view returns (string memory) {
+        return signature;
     }
 
     // function setUserName(string memory _userAccount) public {
