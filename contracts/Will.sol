@@ -36,15 +36,6 @@ contract Will {
         return signature;
     }
 
-    // function setUserName(string memory _userAccount) public {
-    //     console.log("Username changed from '%s' to '%s'", userAccount, _userAccount);
-    //     userAccount = _userAccount;
-    // }
-
-    // function setEthereumPrivKey(string memory _ethereumKey) public {
-    //     ethereumKey = _ethereumKey;
-    // }
-
     function setAccount(string memory _account) public {
         console.log("User Account changed from '%s' to '%s'", userAccount, _account);
         userAccount = _account;
@@ -55,9 +46,9 @@ contract Will {
         message = _message;
     }
 
-    function setPubKeySig(string memory _pubKey) public {
-        console.log("Key changed from '%s' to '%s'", pubKeySig, _pubKey);
-        pubKeySig = _pubKey;
+    function setPubKeySig(string memory _pubKeySig) public {
+        console.log("Key changed from '%s' to '%s'", pubKeySig, _pubKeySig);
+        pubKeySig = _pubKeySig;
     }
 
     function setSignature(string memory _signature) public {
@@ -70,4 +61,5 @@ contract Will {
             successors.push(_successors[i]);
         }
     }
+
 }

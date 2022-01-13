@@ -3,8 +3,11 @@ import { ethers } from "ethers";
 import Will from "./artifacts/contracts/Will.sol/Will.json";
 import "./App.css";
 import { KEYUTIL, KJUR } from "jsrsasign";
+// import BigNumber from "bignumber.js";
 // import CryptoJS from "crypto-js";
 // const forge = require("node-forge"); 
+import { encrypt } from "eth-sig-util";
+import { bufferToHex } from "ethereumjs-util";
 require("jsrsasign");
 
 function WillCreation() {
@@ -14,10 +17,9 @@ function WillCreation() {
     pub: "", // public key
     prv: "", // private key, encrypted
   });
-  // const userKeyStoring = useRef(""); // Key for encrypt/decrypt private key of ECDSA
   const userEncKeyPair = useRef({
     pub: "", 
-    prv: ""
+    // prv: ""
   }); // Key for encrypt/decrypt message
   const [message, setMessage] = useState("");
 
@@ -28,17 +30,14 @@ function WillCreation() {
   const willAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // for locahost
 
   const addSuccessors = () => {
-    // setSuccessors(prev => [...prev, successorInput.current]);
     successors.current.push(successorInput.current);
     console.log("Current Successors: ", successors.current);
-    // alert("Successor added");
   }
 
   const removeSuccessors = () => {
     if (successors.current.length <= 0) return;
     successors.current.splice(0, successors.current.length);
     console.log("Current Successors: ", successors.current);
-    // alert("All successors removed");
   }
 
   const requestAccount = async () => {
@@ -46,19 +45,25 @@ function WillCreation() {
     const [account] = await window.ethereum.request({
       method: "eth_requestAccounts",
     }); // request Metamask account info from user
-    // setUserAccount(account);
     userAccount.current = account;
     console.log("User Account:", userAccount.current);
   };
 
   const submitWill = async () => {
     if (!message) return;
-    if (!userSigKeyPair.current.pub || !userSigKeyPair.current.prv) {
-      console.log("Please get a signature key pair first. ")
-      return;
-    }
+    // if (!userSigKeyPair.current.pub || !userSigKeyPair.current.prv) {
+    //   console.log("Please get a signature key pair first. ")
+    //   return;
+    // }
     if (typeof window.ethereum !== "undefined") {
       await requestAccount();
+      // if (!userEncKeyPair.current.pub) {     
+        // Get the Encryption public key first
+        // }
+        userEncKeyPair.current.pub = await window.ethereum.request({
+          method: 'eth_getEncryptionPublicKey',
+          params: [userAccount.current]
+        });
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
       const newWill = new ethers.Contract(willAddress, Will.abi, signer);
@@ -66,31 +71,30 @@ function WillCreation() {
       // Set all fields
       // Sign the message digest using SHA512 with ECDSA
       const ec = new KJUR.crypto.Signature({ "alg": "SHA512withECDSA" })
-      // Retrieve 'real' private key - not yet implemented
-      // let iv_key = CryptoJS.enc.Hex.parse("1155125110ffffff")
-      // let priv_key_sig = CryptoJS.AES.decrypt(userSigKeyPair.current.prv, userKeyStoring.current, { iv: iv_key });
-      // priv_key_sig = CryptoJS.enc.Hex.stringify(priv_key_sig);
-      // let iv_key = forge.util.createBuffer(forge.util.hexToBytes("1155125110ffffff1155125110ffffff"), 'raw');
-      // let aes_decrypt = forge.cipher.createDecipher("AES-CTR", userKeyStoring.current);
-      // aes_decrypt.start({ iv: iv_key });
-      // aes_decrypt.update(forge.util.hexToBytes(userSigKeyPair.current.prv))
-      // if (aes_decrypt.finish())
-      //   priv_key_sig = aes_decrypt.output.toHex();
       ec.init(userSigKeyPair.current.prv);
       ec.updateString(message);
       let msg_sig = ec.sign();
+      // let msg_sig = await signer.signMessage(message);
       console.log("Message Signature: ", msg_sig)
 
-      if (!userEncKeyPair.current.pub || !userEncKeyPair.current.prv) {
-        console.log("Initialize key")
-        generateEncKeyPair();
-        const setKey = await newWill.setPubKeySig(userSigKeyPair.current.pub.pubKeyHex);
-        await setKey.wait();
-      }
-      // let iv_msg = CryptoJS.enc.Utf8.parse("1155125110ffffff1155125110ffffff")
-      // let msg_enc = CryptoJS.AES.encrypt(message, userKeyEncrypt.current, { iv: iv_msg });
-      let msg_enc = KJUR.crypto.Cipher.encrypt(message, userEncKeyPair.current.pub);
+      // let msg_enc = KJUR.crypto.Cipher.encrypt(message, userEncKeyPair.current.pub);
+      let msg_enc = bufferToHex(
+        Buffer.from(
+          JSON.stringify(
+            encrypt(
+              userEncKeyPair.current.pub, 
+              { data: message }, 
+              'x25519-xsalsa20-poly1305'
+            )
+          )
+          ,'utf-8'
+        )
+      )
       // Initialize & upload public key for signature to smart contract
+      // if (userEncKeyPair.current.pub && userEncKeyPair.current.prv) {
+      //   const setKey = await newWill.setPubKeySig(userSigKeyPair.current.pub.pubKeyHex);
+      //   await setKey.wait();
+      // }
       const setAcc = await newWill.setAccount(userAccount);
       const setMsg = await newWill.setMessage(msg_enc);
       const setSig = await newWill.setSignature(msg_sig);
@@ -107,8 +111,13 @@ function WillCreation() {
       const msg = await getMessage();
       
       // test only
-      const ori_message = KJUR.crypto.Cipher.decrypt(msg, userEncKeyPair.current.prv);
-      console.log("Original Message: ", ori_message); 
+      // const ori_message = KJUR.crypto.Cipher.decrypt(msg, userEncKeyPair.current.prv);
+      // console.log("Original Message: ", ori_message); 
+      const msg_dec = await window.ethereum.request({
+        method: 'eth_decrypt', 
+        params: [msg, userAccount.current]
+      })
+      console.log(`Original Message: ${msg_dec}`); 
     }
   };
 
@@ -166,76 +175,34 @@ function WillCreation() {
     }
   }
 
-  // const generateKeyPBKDF = () => {
-  //   // Use PBKDF2 to generate AES key
-  //   // Then use AES to encrypt private key
-  //   if (userKeyStoring.current) return;
-  //   const salt = CryptoJS.lib.WordArray.random(128 / 8);
-  //   const key = CryptoJS.PBKDF2("fyp2021", salt, {
-  //     keySize: 256 / 32
-  //   });
-  //   // const salt = forge.random.getBytesSync(128);
-  //   // const key = forge.pkcs5.pbkdf2("fyp2021", salt, 10000, 32);
-  //   userKeyStoring.current = key;
+  // const generateEncKeyPair = async () => {
+  //   // for encrypting message of will before uploading
+  //   if (userEncKeyPair.current.pub && userEncKeyPair.current.prv) {
+  //     console.log("Key pair already generated. ")
+  //     return;
+  //   }
+  //   console.log("Encryption key pair generating...")
+  //   const keypair = KEYUTIL.generateKeypair("RSA", 2048);
+  //   userEncKeyPair.current.pub = KEYUTIL.getKey(keypair.pubKeyObj);
+  //   userEncKeyPair.current.prv = KEYUTIL.getKey(keypair.prvKeyObj);
+  //   console.log("RSA key pair: ", keypair)
+  //   alert("Encryption Key pair generated. Please keep the private key confidential. ");
   // }
 
-  const generateEncKeyPair = () => {
-    // for encrypting message of will before uploading
-    if (userEncKeyPair.current.pub && userEncKeyPair.current.prv) {
-      // console.log("Public key RSA: " + userEncKeyPair.current.pub.pubKeyHex);
-      // console.log("Private key RSA: " + userEncKeyPair.current.prv.prvKeyHex);
-      console.log("Key pair already generated. ")
-      return;
-    }
-    const keypair = KEYUTIL.generateKeypair("RSA", 2048);
-    userEncKeyPair.current.pub = KEYUTIL.getKey(keypair.pubKeyObj);
-    userEncKeyPair.current.prv = KEYUTIL.getKey(keypair.prvKeyObj);
-    console.log("RSA key pair: ", keypair)
-    // console.log("Public key RSA: " + userEncKeyPair.current.pub.pubKeyHex);
-    // console.log("Private key RSA: " + userEncKeyPair.current.prv.prvKeyHex);
-    // const salt = CryptoJS.lib.WordArray.random(128 / 8);
-    // const key = CryptoJS.PBKDF2("fyp2021enc", salt, {
-    //   keySize: 256 / 32, 
-    //   iterations: 1000
-    // });
-    // const salt = forge.random.getBytesSync(128);
-    // const key = forge.pkcs5.pbkdf2("fyp2021enc", salt, 10000, 32);
-  }
-
   const generateSigKeyPair = () => {
+    console.log("Signature key pair generating...")
     if (userSigKeyPair.current.pub && userSigKeyPair.current.prv) {
       console.log("Public key: " + userSigKeyPair.current.pub.pubKeyHex);
       console.log("Private key: " + userSigKeyPair.current.prv.prvKeyHex);
       return;
     }
-    // const ec = new KJUR.crypto.ECDSA({ curve: "secp256r1" });
-    // const keypair = ec.generateKeyPairHex();
-    // userSigKeyPair.current.pub = keypair.ecpubhex;
-    // userSigKeyPair.current.prv = keypair.ecprvhex;
+
     const keypair = KEYUTIL.generateKeypair("EC", "secp256r1");
     userSigKeyPair.current.pub = KEYUTIL.getKey(keypair.pubKeyObj);
     userSigKeyPair.current.prv = KEYUTIL.getKey(keypair.prvKeyObj);
-    // Initialize AES key for storing private key securely - not yet implemented
-    // if (!userKeyStoring.current) generateKeyPBKDF();
-    // let priv = CryptoJS.enc.Hex.parse(keypair.ecprvhex);
-    // let iv = CryptoJS.enc.Hex.parse("1155125110ffffff");
-    // const key_enc = CryptoJS.AES.encrypt(priv, userKeyStoring.current, { iv: iv });
-    // userSigKeyPair.current.prv = key_enc;
-    // let iv = forge.util.createBuffer(forge.util.hexToBytes("1155125110ffffff1155125110ffffff"), 'raw');
-    // const aes = forge.cipher.createCipher("AES-CTR", userKeyStoring.current);
-    // aes.start({iv: iv});
-    // aes.update(forge.util.createBuffer(keypair.ecprvhex));
-    // aes.finish()
-    // userSigKeyPair.current.prv = aes.output.toHex();
-    // setSigKeyPair(prev => ({
-    //   ...prev, 
-    //   pub: keypair.ecpubhex, 
-    //   prv: keypair.ecprvhex
-    // }))
+    
     console.log("Public key: " + userSigKeyPair.current.pub.pubKeyHex);
     console.log("Private key: " + userSigKeyPair.current.prv.prvKeyHex);
-    // alert("Public key: " + keypair.ecpubhex);
-    // alert("Private key: " + keypair.ecprvhex);
     alert("Signature Key pair generated. Please keep the private key confidential. ");
   };
 
@@ -341,6 +308,19 @@ function WillCreation() {
         >
           Generate Signature Key Pair
         </button>
+        {/* <button
+          style={{
+            padding: "1px",
+            margin: "8px",
+            height: "50px",
+            width: "280px",
+            fontSize: "20px",
+            alignItems: "center",
+          }}
+          onClick={generateEncKeyPair}
+        >
+          Generate Encryption Key Pair
+        </button> */}
       </header>
     </div>
   );
