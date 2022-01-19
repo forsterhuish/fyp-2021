@@ -1,14 +1,10 @@
 import { useState, useRef } from "react";
-import { ethers } from "ethers";
+import { ethers, Wallet } from "ethers";
 import Will from "./artifacts/contracts/Will.sol/Will.json";
 import "./App.css";
 import { KEYUTIL, KJUR } from "jsrsasign";
-// import BigNumber from "bignumber.js";
-// import CryptoJS from "crypto-js";
-// const forge = require("node-forge"); 
 import { encrypt } from "eth-sig-util";
 import { bufferToHex } from "ethereumjs-util";
-require("jsrsasign");
 
 function WillCreation() {
   const userAccount = useRef("");
@@ -19,7 +15,7 @@ function WillCreation() {
   });
   const userEncKeyPair = useRef({
     pub: "", 
-    // prv: ""
+    prv: ""
   }); // Key for encrypt/decrypt message
   const [message, setMessage] = useState("");
 
@@ -51,33 +47,34 @@ function WillCreation() {
 
   const submitWill = async () => {
     if (!message) return;
-    // if (!userSigKeyPair.current.pub || !userSigKeyPair.current.prv) {
-    //   console.log("Please get a signature key pair first. ")
-    //   return;
-    // }
+    if (!userSigKeyPair.current.pub || !userSigKeyPair.current.prv) {
+      generateSigKeyPair();
+    }
     if (typeof window.ethereum !== "undefined") {
       await requestAccount();
-      // if (!userEncKeyPair.current.pub) {     
-        // Get the Encryption public key first
-        // }
-        userEncKeyPair.current.pub = await window.ethereum.request({
-          method: 'eth_getEncryptionPublicKey',
-          params: [userAccount.current]
-        });
+      userEncKeyPair.current.pub = await window.ethereum.request({
+        method: 'eth_getEncryptionPublicKey',
+        params: [userAccount.current]
+      });
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
       const newWill = new ethers.Contract(willAddress, Will.abi, signer);
       
       // Set all fields
       // Sign the message digest using SHA512 with ECDSA
-      const ec = new KJUR.crypto.Signature({ "alg": "SHA512withECDSA" })
-      ec.init(userSigKeyPair.current.prv);
-      ec.updateString(message);
-      let msg_sig = ec.sign();
-      // let msg_sig = await signer.signMessage(message);
-      console.log("Message Signature: ", msg_sig)
+      // const ec = new KJUR.crypto.Signature({ "alg": "SHA512withECDSA" })
+      // ec.init(userSigKeyPair.current.prv);
+      // ec.updateString(message);
+      // let msg_sig = ec.sign();
 
-      // let msg_enc = KJUR.crypto.Cipher.encrypt(message, userEncKeyPair.current.pub);
+      // let accountPrivKey = prompt("Please enter your wallet private key");
+      let accountPrivKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+      let wallet = new Wallet(accountPrivKey);
+
+      let msg_sig = await wallet.signMessage(message);
+      console.log("Message Signature:", msg_sig)
+
+      // Encrypt the message
       let msg_enc = bufferToHex(
         Buffer.from(
           JSON.stringify(
@@ -111,8 +108,7 @@ function WillCreation() {
       const msg = await getMessage();
       
       // test only
-      // const ori_message = KJUR.crypto.Cipher.decrypt(msg, userEncKeyPair.current.prv);
-      // console.log("Original Message: ", ori_message); 
+      // Decrypt message with DMS??? 
       const msg_dec = await window.ethereum.request({
         method: 'eth_decrypt', 
         params: [msg, userAccount.current]
@@ -295,7 +291,7 @@ function WillCreation() {
         >
           See Your Message
         </button>
-        <button
+        {/* <button
           style={{
             padding: "1px",
             // margin: "8px",
@@ -307,7 +303,7 @@ function WillCreation() {
           onClick={generateSigKeyPair}
         >
           Generate Signature Key Pair
-        </button>
+        </button> */}
         {/* <button
           style={{
             padding: "1px",
