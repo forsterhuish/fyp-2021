@@ -6,7 +6,7 @@ import "hardhat/console.sol";
 contract Will {
     // states
     string private userAccount;
-    string private pubKeySig; // pub key for signature
+    string private pubKeySig = ""; // pub key for signature
     string private message = "";
     string private signature = ""; // msg signature
     string[] private successors;
@@ -16,9 +16,9 @@ contract Will {
         console.log("Deployed a contract");
     }
 
-    function getUserAccount() public view returns (string memory) {
-        return userAccount;
-    }
+    // function getUserAccount() public view returns (string memory) {
+    //     return userAccount;
+    // }
 
     function getMessage() public view returns (string memory) {
         return message;

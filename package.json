@@ -11,13 +11,9 @@
     "@testing-library/react": "^11.1.0",
     "@testing-library/user-event": "^12.1.10",
     "@typechain/ethers-v5": "^6.0.5",
-    "bignumber.js": "^9.0.1",
-    "crypto-js": "^4.1.1",
     "dotenv": "^10.0.0",
     "ethers": "^5.0.32",
     "hardhat-typechain": "^0.3.5",
-    "jsrsasign": "^10.5.0",
-    "jsrsasign-util": "^1.0.5",
     "node-forge": "^0.10.0",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
@@ -60,7 +56,7 @@
     "@nomiclabs/hardhat-ethers": "^2.0.0",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
     "chai": "^4.2.0",
-    "concurrently": "^6.4.0",
+    "concurrently": "^6.5.1",
     "ethereum-waffle": "^3.0.0",
     "hardhat": "^2.1.2"
   }

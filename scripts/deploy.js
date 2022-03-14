@@ -22,11 +22,18 @@ async function main() {
 
   // We get the contract to deploy
   const Will = await hre.ethers.getContractFactory("Will");
-  const will = await Will.deploy(" ");
+  const will = await Will.deploy(""); // No account specified during deployment
 
   await will.deployed();
 
   console.log("Will deployed to: ", will.address);
+
+  const Verifier = await hre.ethers.getContractFactory("Verifier");
+  const verifier = await Verifier.deploy();
+
+  await verifier.deployed();
+
+  console.log("Verifier deployed to: ", verifier.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

@@ -1,8 +1,8 @@
 import { useState, useRef } from "react";
-import { ethers, Wallet } from "ethers";
+import { ethers } from "ethers";
 import Will from "./artifacts/contracts/Will.sol/Will.json";
+import Verifier from "./artifacts/contracts/Verify.sol/Verifier.json";
 import "./App.css";
-import { KEYUTIL, KJUR } from "jsrsasign";
 import { encrypt } from "eth-sig-util";
 import { bufferToHex } from "ethereumjs-util";
 
@@ -23,17 +23,16 @@ function WillCreation() {
   const successorInput = useRef("");
   
   // const willAddress = "0x072E617a6d98C7f24162E9993fBc91Ef1FeD6322"; // for ropsten testnet
-  const willAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // for locahost
+  const willAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // for localhost
+  const verifierAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
   const addSuccessors = () => {
     successors.current.push(successorInput.current);
-    console.log("Current Successors: ", successors.current);
   }
 
   const removeSuccessors = () => {
     if (successors.current.length <= 0) return;
     successors.current.splice(0, successors.current.length);
-    console.log("Current Successors: ", successors.current);
   }
 
   const requestAccount = async () => {
@@ -47,46 +46,52 @@ function WillCreation() {
 
   const submitWill = async () => {
     if (!message) return;
-    if (!userSigKeyPair.current.pub || !userSigKeyPair.current.prv) {
-      generateSigKeyPair();
-    }
+    // if (!userSigKeyPair.current.pub || !userSigKeyPair.current.prv) {
+    //   generateSigKeyPair();
+    // }
     if (typeof window.ethereum !== "undefined") {
       await requestAccount();
-      userEncKeyPair.current.pub = await window.ethereum.request({
-        method: 'eth_getEncryptionPublicKey',
-        params: [userAccount.current]
-      });
+      if (!userEncKeyPair.current.pub) {
+        // Set Encryption public key
+        userEncKeyPair.current.pub = await window.ethereum.request({
+          method: 'eth_getEncryptionPublicKey',
+          params: [userAccount.current]
+        });
+      }
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
       const newWill = new ethers.Contract(willAddress, Will.abi, signer);
+      const verifier = new ethers.Contract(verifierAddress, Verifier.abi, signer);
       
-      // Set all fields
-      // Sign the message digest using SHA512 with ECDSA
-      // const ec = new KJUR.crypto.Signature({ "alg": "SHA512withECDSA" })
-      // ec.init(userSigKeyPair.current.prv);
-      // ec.updateString(message);
-      // let msg_sig = ec.sign();
-
-      // let accountPrivKey = prompt("Please enter your wallet private key");
-      let accountPrivKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
-      let wallet = new Wallet(accountPrivKey);
-
-      let msg_sig = await wallet.signMessage(message);
-      console.log("Message Signature:", msg_sig)
-
-      // Encrypt the message
-      let msg_enc = bufferToHex(
-        Buffer.from(
-          JSON.stringify(
-            encrypt(
-              userEncKeyPair.current.pub, 
-              { data: message }, 
-              'x25519-xsalsa20-poly1305'
+      // const hex_msg = `0x${Buffer.from(message, 'utf-8').toString('hex')}`;
+      let msg_enc = "";
+      let msg_sig = "";
+      let msg_hash = "";
+      try {
+        // get the message signature
+        
+        // Encrypt the message
+        msg_enc = bufferToHex(
+          Buffer.from(
+            JSON.stringify(
+              encrypt(
+                userEncKeyPair.current.pub, 
+                { data: message }, 
+                'x25519-xsalsa20-poly1305'
+              )
             )
+            ,'utf-8'
           )
-          ,'utf-8'
         )
-      )
+        msg_hash = await verifier.getMessageHash(verifierAddress, 123, msg_enc, 1);
+        msg_sig = await window.ethereum.request({
+          method: "personal_sign",
+          params: [userAccount.current, msg_hash]
+        })
+        console.log("Message Signature:", msg_sig)
+      } catch (err) {
+        console.error(err);
+      }
       // Initialize & upload public key for signature to smart contract
       // if (userEncKeyPair.current.pub && userEncKeyPair.current.prv) {
       //   const setKey = await newWill.setPubKeySig(userSigKeyPair.current.pub.pubKeyHex);
@@ -95,25 +100,34 @@ function WillCreation() {
       const setAcc = await newWill.setAccount(userAccount);
       const setMsg = await newWill.setMessage(msg_enc);
       const setSig = await newWill.setSignature(msg_sig);
+      const setPubKeySig = await newWill.setPubKeySig(userSigKeyPair.current.pub);
       const setSuc = await newWill.setSuccessors(successors.current);
       console.log("Submitting Will...");
       await setAcc.wait();
       await setMsg.wait();
       await setSig.wait();
+      await setPubKeySig.wait();
       await setSuc.wait();
       console.log("Will submitted");
+
+      // Verification, testing purpose
       getSuccessors();
       getPubKeySig();
-      getSignature();
+      const msg_signature = await getSignature();
       const msg = await getMessage();
       
-      // test only
       // Decrypt message with DMS??? 
-      const msg_dec = await window.ethereum.request({
-        method: 'eth_decrypt', 
-        params: [msg, userAccount.current]
-      })
-      console.log(`Original Message: ${msg_dec}`); 
+      try {
+        const msg_dec = await window.ethereum.request({
+          method: 'eth_decrypt', 
+          params: [msg, userAccount.current]
+        })
+        console.log(`Original Message: ${msg_dec}`); 
+        const msg_verify = await verifier.verify(userAccount.current, verifierAddress, 123, msg_dec, 1, msg_signature);
+        console.log(`Signer of message: ${msg_verify}`);
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
@@ -185,22 +199,22 @@ function WillCreation() {
   //   alert("Encryption Key pair generated. Please keep the private key confidential. ");
   // }
 
-  const generateSigKeyPair = () => {
-    console.log("Signature key pair generating...")
-    if (userSigKeyPair.current.pub && userSigKeyPair.current.prv) {
-      console.log("Public key: " + userSigKeyPair.current.pub.pubKeyHex);
-      console.log("Private key: " + userSigKeyPair.current.prv.prvKeyHex);
-      return;
-    }
+  // const generateSigKeyPair = () => {
+  //   console.log("Signature key pair generating...")
+  //   if (userSigKeyPair.current.pub && userSigKeyPair.current.prv) {
+  //     console.log("Public key: " + userSigKeyPair.current.pub.pubKeyHex);
+  //     console.log("Private key: " + userSigKeyPair.current.prv.prvKeyHex);
+  //     return;
+  //   }
 
-    const keypair = KEYUTIL.generateKeypair("EC", "secp256r1");
-    userSigKeyPair.current.pub = KEYUTIL.getKey(keypair.pubKeyObj);
-    userSigKeyPair.current.prv = KEYUTIL.getKey(keypair.prvKeyObj);
+  //   const keypair = KEYUTIL.generateKeypair("EC", "secp256r1");
+  //   userSigKeyPair.current.pub = KEYUTIL.getKey(keypair.pubKeyObj);
+  //   userSigKeyPair.current.prv = KEYUTIL.getKey(keypair.prvKeyObj);
     
-    console.log("Public key: " + userSigKeyPair.current.pub.pubKeyHex);
-    console.log("Private key: " + userSigKeyPair.current.prv.prvKeyHex);
-    alert("Signature Key pair generated. Please keep the private key confidential. ");
-  };
+  //   console.log("Public key: " + userSigKeyPair.current.pub.pubKeyHex);
+  //   console.log("Private key: " + userSigKeyPair.current.prv.prvKeyHex);
+  //   alert("Signature Key pair generated. Please keep the private key confidential. ");
+  // };
 
   return (
     <div className="App">
