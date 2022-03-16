@@ -119,9 +119,11 @@ function WillCreation() {
         })
         console.log(`Original Message: ${msg_dec}`); 
         // split signature
-        const r = msg_signature.slice(0, 66);
-        const s = "0x" + msg_signature.slice(66, 130);
-        const v = parseInt(msg_signature.slice(130, 132), 16);
+        const r = msg_signature.slice(0, 66); // first 32 bytes of signature
+        const s = "0x" + msg_signature.slice(66, 130); // second 32 bytes of signature
+        // r, s are output of ECDSA signature
+        const v = parseInt(msg_signature.slice(130, 132), 16); // last 1 byte (in int)
+        // v is recovery ID, to recover the public key of signer
         const msg_verified = await verifier.VerifyMessage(userAccount.current, msg, v, r, s);
         console.log(`Message verified: ${msg_verified}`);
       } catch (err) {
