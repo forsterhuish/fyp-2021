@@ -22,7 +22,7 @@ async function main() {
 
   // We get the contract to deploy
   const Will = await hre.ethers.getContractFactory("Will");
-  const will = await Will.deploy(""); // No account specified during deployment
+  const will = await Will.deploy(); // No account specified during deployment
 
   await will.deployed();
 

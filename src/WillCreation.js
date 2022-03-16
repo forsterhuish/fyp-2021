@@ -9,10 +9,6 @@ import { bufferToHex } from "ethereumjs-util";
 function WillCreation() {
   const userAccount = useRef("");
   // key pair for signature
-  const userSigKeyPair = useRef({
-    pub: "", // public key
-    prv: "", // private key, encrypted
-  });
   const userEncKeyPair = useRef({
     pub: "", 
     prv: ""
@@ -43,14 +39,19 @@ function WillCreation() {
     userAccount.current = account;
     console.log("User Account:", userAccount.current);
   };
-
+  
   const submitWill = async () => {
     if (!message) return;
-    // if (!userSigKeyPair.current.pub || !userSigKeyPair.current.prv) {
-    //   generateSigKeyPair();
-    // }
     if (typeof window.ethereum !== "undefined") {
-      await requestAccount();
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const newWill = new ethers.Contract(willAddress, Will.abi, signer);
+      const verifier = new ethers.Contract(verifierAddress, Verifier.abi, signer);
+      if (!userAccount.current) {
+        await requestAccount();
+        const setAccount = await newWill.setAccount(userAccount.current);
+        await setAccount.wait();
+      }
       if (!userEncKeyPair.current.pub) {
         // Set Encryption public key
         userEncKeyPair.current.pub = await window.ethereum.request({
@@ -58,10 +59,6 @@ function WillCreation() {
           params: [userAccount.current]
         });
       }
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      const newWill = new ethers.Contract(willAddress, Will.abi, signer);
-      const verifier = new ethers.Contract(verifierAddress, Verifier.abi, signer);
       
       // const hex_msg = `0x${Buffer.from(message, 'utf-8').toString('hex')}`;
       let msg_enc = "";
@@ -83,10 +80,10 @@ function WillCreation() {
             ,'utf-8'
           )
         )
-        msg_hash = await verifier.getMessageHash(verifierAddress, 123, msg_enc, 1);
+        msg_hash = await verifier.getMessageHash(msg_enc);
         msg_sig = await window.ethereum.request({
           method: "personal_sign",
-          params: [userAccount.current, msg_hash]
+          params: [msg_hash, userAccount.current]
         })
         console.log("Message Signature:", msg_sig)
       } catch (err) {
@@ -100,22 +97,20 @@ function WillCreation() {
       const setAcc = await newWill.setAccount(userAccount);
       const setMsg = await newWill.setMessage(msg_enc);
       const setSig = await newWill.setSignature(msg_sig);
-      const setPubKeySig = await newWill.setPubKeySig(userSigKeyPair.current.pub);
+      // const setPubKeySig = await newWill.setPubKeySig(userSigKeyPair.current.pub);
       const setSuc = await newWill.setSuccessors(successors.current);
       console.log("Submitting Will...");
       await setAcc.wait();
       await setMsg.wait();
       await setSig.wait();
-      await setPubKeySig.wait();
+      // await setPubKeySig.wait();
       await setSuc.wait();
       console.log("Will submitted");
 
       // Verification, testing purpose
-      getSuccessors();
-      getPubKeySig();
+      await getSuccessors();
       const msg_signature = await getSignature();
       const msg = await getMessage();
-      
       // Decrypt message with DMS??? 
       try {
         const msg_dec = await window.ethereum.request({
@@ -123,8 +118,12 @@ function WillCreation() {
           params: [msg, userAccount.current]
         })
         console.log(`Original Message: ${msg_dec}`); 
-        const msg_verify = await verifier.verify(userAccount.current, verifierAddress, 123, msg_dec, 1, msg_signature);
-        console.log(`Signer of message: ${msg_verify}`);
+        // split signature
+        const r = msg_signature.slice(0, 66);
+        const s = "0x" + msg_signature.slice(66, 130);
+        const v = parseInt(msg_signature.slice(130, 132), 16);
+        const msg_verified = await verifier.VerifyMessage(userAccount.current, msg, v, r, s);
+        console.log(`Message verified: ${msg_verified}`);
       } catch (err) {
         console.error(err);
       }
@@ -145,19 +144,19 @@ function WillCreation() {
     }
   };
 
-  const getPubKeySig = async () => {
-    if (typeof window.ethereum !== "undefined") {
-      const provider = new ethers.providers.Web3Provider(window.ethereum); // to access blockchain data
-      const will = new ethers.Contract(willAddress, Will.abi, provider); // new instance of contract
-      try {
-        const data = await will.getPubKeySig();
-        console.log("Public key for Signature: ", data);
-        // return data;
-      } catch (error) {
-        console.log(error);
-      }
-    }
-  };
+  // const getPubKeySig = async () => {
+  //   if (typeof window.ethereum !== "undefined") {
+  //     const provider = new ethers.providers.Web3Provider(window.ethereum); // to access blockchain data
+  //     const will = new ethers.Contract(willAddress, Will.abi, provider); // new instance of contract
+  //     try {
+  //       const data = await will.getPubKeySig();
+  //       console.log("Public key for Signature: ", data);
+  //       // return data;
+  //     } catch (error) {
+  //       console.log(error);
+  //     }
+  //   }
+  // };
 
   const getSignature = async () => {
     if (typeof window.ethereum !== "undefined") {
@@ -166,6 +165,7 @@ function WillCreation() {
       try {
         const data = await will.getSignature();
         console.log("Signature for message: ", data);
+        return data;
       } catch (error) {
         console.log(error);
       }
@@ -179,6 +179,7 @@ function WillCreation() {
       try {
         const data = await will.getSuccessors();
         console.log("List of Successors: ", data);
+        return data;
       } catch (error) {
         console.log(error);
       }

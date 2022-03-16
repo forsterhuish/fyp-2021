@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.3;
+pragma solidity ^0.8.12;
 
 import "hardhat/console.sol";
 
@@ -10,11 +10,6 @@ contract Will {
     string private message = "";
     string private signature = ""; // msg signature
     string[] private successors;
-
-    constructor(string memory _userAccount) {
-        userAccount = _userAccount;
-        console.log("Deployed a contract");
-    }
 
     // function getUserAccount() public view returns (string memory) {
     //     return userAccount;
