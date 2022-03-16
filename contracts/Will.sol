@@ -36,6 +36,12 @@ contract Will {
         userAccount = _account;
     }
 
+    function setAllFields(string memory _message, string memory _signature, string[] memory _successors) public {
+        setMessage(_message);
+        setSignature(_signature);
+        setSuccessors(_successors);
+    }
+
     function setMessage(string memory _message) public {
         console.log("Messsage changed from '%s' to '%s'", message, _message);
         message = _message;

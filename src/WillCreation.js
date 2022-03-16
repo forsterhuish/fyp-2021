@@ -90,22 +90,10 @@ function WillCreation() {
         console.error(err);
       }
       // Initialize & upload public key for signature to smart contract
-      // if (userEncKeyPair.current.pub && userEncKeyPair.current.prv) {
-      //   const setKey = await newWill.setPubKeySig(userSigKeyPair.current.pub.pubKeyHex);
-      //   await setKey.wait();
-      // }
-      const setAcc = await newWill.setAccount(userAccount);
-      const setMsg = await newWill.setMessage(msg_enc);
-      const setSig = await newWill.setSignature(msg_sig);
-      // const setPubKeySig = await newWill.setPubKeySig(userSigKeyPair.current.pub);
-      const setSuc = await newWill.setSuccessors(successors.current);
+      const setAll = await newWill.setAllFields(msg_enc, msg_sig, successors.current);
       console.log("Submitting Will...");
-      await setAcc.wait();
-      await setMsg.wait();
-      await setSig.wait();
-      // await setPubKeySig.wait();
-      await setSuc.wait();
-      console.log("Will submitted");
+      await setAll.wait();
+      alert("Will submitted");
 
       // Verification, testing purpose
       await getSuccessors();
@@ -125,11 +113,12 @@ function WillCreation() {
         const v = parseInt(msg_signature.slice(130, 132), 16); // last 1 byte (in int)
         // v is recovery ID, to recover the public key of signer
         const msg_verified = await verifier.VerifyMessage(userAccount.current, msg, v, r, s);
-        console.log(`Message verified: ${msg_verified}`);
+        alert(`Message verified: ${msg_verified}`);
       } catch (err) {
         console.error(err);
       }
     }
+    else alert("Please install Metamask")
   };
 
   const getMessage = async () => {
@@ -224,18 +213,6 @@ function WillCreation() {
       <header className="App-header">
         <h1>Online Will System</h1>
         <h3>Your Message for Beloved:</h3>
-        {/* <input
-          onChange={(e) => setUserName(e.target.value)}
-          placeholder="User Name"
-          required={true}
-          value={userName}
-        ></input> */}
-        {/* <input
-          onChange={(e) => setEthereumPrivKey(e.target.value)}
-          placeholder="Ethereum Priv Key"
-          required={true}
-          value={ethereumPrivKey}
-        ></input> */}
         <input
           style={{
             height: "20px",
