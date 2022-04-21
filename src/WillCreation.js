@@ -14,6 +14,7 @@ function WillCreation() {
     prv: ""
   }); // Key for encrypt/decrypt message
   const [message, setMessage] = useState("");
+  const [amount, setAmount] = useState(0.0);
 
   const successors = useRef([]);
   const successorInput = useRef("");
@@ -23,12 +24,18 @@ function WillCreation() {
   const verifierAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
   const addSuccessors = () => {
+    if (successors.current.includes(successorInput.current)) {
+      // console.log("already included")
+      return;
+    }
     successors.current.push(successorInput.current);
+    console.log("Successor added\nCurrent Successors: " + successors.current);
   }
 
   const removeSuccessors = () => {
     if (successors.current.length <= 0) return;
     successors.current.splice(0, successors.current.length);
+    console.log("Successor removed\nCurrent Successors: " + successors.current);
   }
 
   const requestAccount = async () => {
@@ -47,6 +54,10 @@ function WillCreation() {
       const signer = provider.getSigner();
       const newWill = new ethers.Contract(willAddress, Will.abi, signer);
       const verifier = new ethers.Contract(verifierAddress, Verifier.abi, signer);
+      if (successors.current.length <= 0) {
+        alert("You have no successors");
+        return;
+      }
       if (!userAccount.current) {
         await requestAccount();
         const setAccount = await newWill.setAccount(userAccount.current);
@@ -65,8 +76,6 @@ function WillCreation() {
       let msg_sig = "";
       let msg_hash = "";
       try {
-        // get the message signature
-        
         // Encrypt the message
         msg_enc = bufferToHex(
           Buffer.from(
@@ -101,11 +110,6 @@ function WillCreation() {
       const msg = await getMessage();
       // Decrypt message with DMS??? 
       try {
-        const msg_dec = await window.ethereum.request({
-          method: 'eth_decrypt', 
-          params: [msg, userAccount.current]
-        })
-        console.log(`Original Message: ${msg_dec}`); 
         // split signature
         const r = msg_signature.slice(0, 66); // first 32 bytes of signature
         const s = "0x" + msg_signature.slice(66, 130); // second 32 bytes of signature
@@ -113,7 +117,18 @@ function WillCreation() {
         const v = parseInt(msg_signature.slice(130, 132), 16); // last 1 byte (in int)
         // v is recovery ID, to recover the public key of signer
         const msg_verified = await verifier.VerifyMessage(userAccount.current, msg, v, r, s);
-        alert(`Message verified: ${msg_verified}`);
+        if (msg_verified === true) {
+          const msg_dec = await window.ethereum.request({
+            method: 'eth_decrypt', 
+            params: [msg, userAccount.current]
+          })
+          console.log(`Original Message: ${msg_dec}`);
+          alert(`Original Message: ${msg_dec}`); 
+          removeSuccessors();
+        }
+        else {
+          alert("Wrong signature");
+        }
       } catch (err) {
         console.error(err);
       }
@@ -134,20 +149,6 @@ function WillCreation() {
       }
     }
   };
-
-  // const getPubKeySig = async () => {
-  //   if (typeof window.ethereum !== "undefined") {
-  //     const provider = new ethers.providers.Web3Provider(window.ethereum); // to access blockchain data
-  //     const will = new ethers.Contract(willAddress, Will.abi, provider); // new instance of contract
-  //     try {
-  //       const data = await will.getPubKeySig();
-  //       console.log("Public key for Signature: ", data);
-  //       // return data;
-  //     } catch (error) {
-  //       console.log(error);
-  //     }
-  //   }
-  // };
 
   const getSignature = async () => {
     if (typeof window.ethereum !== "undefined") {
@@ -177,61 +178,45 @@ function WillCreation() {
     }
   }
 
-  // const generateEncKeyPair = async () => {
-  //   // for encrypting message of will before uploading
-  //   if (userEncKeyPair.current.pub && userEncKeyPair.current.prv) {
-  //     console.log("Key pair already generated. ")
-  //     return;
-  //   }
-  //   console.log("Encryption key pair generating...")
-  //   const keypair = KEYUTIL.generateKeypair("RSA", 2048);
-  //   userEncKeyPair.current.pub = KEYUTIL.getKey(keypair.pubKeyObj);
-  //   userEncKeyPair.current.prv = KEYUTIL.getKey(keypair.prvKeyObj);
-  //   console.log("RSA key pair: ", keypair)
-  //   alert("Encryption Key pair generated. Please keep the private key confidential. ");
-  // }
-
-  // const generateSigKeyPair = () => {
-  //   console.log("Signature key pair generating...")
-  //   if (userSigKeyPair.current.pub && userSigKeyPair.current.prv) {
-  //     console.log("Public key: " + userSigKeyPair.current.pub.pubKeyHex);
-  //     console.log("Private key: " + userSigKeyPair.current.prv.prvKeyHex);
-  //     return;
-  //   }
-
-  //   const keypair = KEYUTIL.generateKeypair("EC", "secp256r1");
-  //   userSigKeyPair.current.pub = KEYUTIL.getKey(keypair.pubKeyObj);
-  //   userSigKeyPair.current.prv = KEYUTIL.getKey(keypair.prvKeyObj);
-    
-  //   console.log("Public key: " + userSigKeyPair.current.pub.pubKeyHex);
-  //   console.log("Private key: " + userSigKeyPair.current.prv.prvKeyHex);
-  //   alert("Signature Key pair generated. Please keep the private key confidential. ");
-  // };
-
   return (
     <div className="App">
       <header className="App-header">
         <h1>Online Will System</h1>
-        <h3>Your Message for Beloved:</h3>
+        <p>Place Your Message Here</p>
         <input
           style={{
-            height: "20px",
+            height: "50px",
             width: "300px",
+            fontSize: "20px",
           }}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Place Your Message Here"
           required={true}
           value={message}
         ></input>
+        <p>Enter Address(es) of successor(s)</p>
         <input
           style={{
-            height: "20px",
+            height: "50px",
             width: "300px",
+            fontSize: "17px",
           }}
           onChange={(e) => successorInput.current = e.target.value}
-          placeholder="Enter Successors"
+          placeholder="Enter Address(es) of successor(s)"
           required={true}
           // value={successorInput.current}
+        ></input>
+        <p>How much would you like to deposit?</p>
+        <input
+          style={{
+            height: "50px",
+            width: "300px",
+            fontSize: "17px",
+          }}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="How much would you like to deposit?"
+          required={true}
+          value={amount}
         ></input>
         <button
           style={{
@@ -272,45 +257,6 @@ function WillCreation() {
         >
           Confirm
         </button>
-        <button
-          style={{
-            padding: "1px",
-            margin: "8px",
-            height: "50px",
-            width: "200px",
-            fontSize: "20px",
-            alignItems: "center",
-          }}
-          onClick={getMessage}
-        >
-          See Your Message
-        </button>
-        {/* <button
-          style={{
-            padding: "1px",
-            // margin: "8px",
-            height: "50px",
-            width: "280px",
-            fontSize: "20px",
-            alignItems: "center",
-          }}
-          onClick={generateSigKeyPair}
-        >
-          Generate Signature Key Pair
-        </button> */}
-        {/* <button
-          style={{
-            padding: "1px",
-            margin: "8px",
-            height: "50px",
-            width: "280px",
-            fontSize: "20px",
-            alignItems: "center",
-          }}
-          onClick={generateEncKeyPair}
-        >
-          Generate Encryption Key Pair
-        </button> */}
       </header>
     </div>
   );

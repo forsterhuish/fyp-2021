@@ -9,7 +9,7 @@ contract Will {
     string private pubKeySig = ""; // pub key for signature
     string private message = "";
     string private signature = ""; // msg signature
-    string[] private successors;
+    address payable[] private successors;
 
     // function getUserAccount() public view returns (string memory) {
     //     return userAccount;
@@ -23,7 +23,7 @@ contract Will {
         return pubKeySig;
     }
 
-    function getSuccessors() public view returns (string[] memory) {
+    function getSuccessors() public view returns (address payable[] memory) {
         return successors;
     }
 
@@ -36,7 +36,7 @@ contract Will {
         userAccount = _account;
     }
 
-    function setAllFields(string memory _message, string memory _signature, string[] memory _successors) public {
+    function setAllFields(string memory _message, string memory _signature, address payable[] memory _successors) public {
         setMessage(_message);
         setSignature(_signature);
         setSuccessors(_successors);
@@ -57,7 +57,7 @@ contract Will {
         console.log("Signature Set");
     }
 
-    function setSuccessors(string[] memory _successors) public {
+    function setSuccessors(address payable[] memory _successors) public {
         for (uint i = 0; i < _successors.length; i++) {
             successors.push(_successors[i]);
         }
