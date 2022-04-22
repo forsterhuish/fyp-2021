@@ -34,6 +34,13 @@ async function main() {
   await verifier.deployed();
 
   console.log("Verifier deployed to: ", verifier.address);
+
+  const DMS = await hre.ethers.getContractFactory("DMS");
+  const dms = await DMS.deploy();
+
+  await dms.deployed();
+
+  console.log("DMS deployed to: ", dms.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

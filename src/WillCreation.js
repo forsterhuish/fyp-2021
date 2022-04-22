@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { ethers } from "ethers";
 import Will from "./artifacts/contracts/Will.sol/Will.json";
 import Verifier from "./artifacts/contracts/Verify.sol/Verifier.json";
+import DMS from "./artifacts/contracts/DMS.sol/DMS.json";
 import "./App.css";
 import { encrypt } from "eth-sig-util";
 import { bufferToHex } from "ethereumjs-util";
@@ -15,27 +16,32 @@ function WillCreation() {
   }); // Key for encrypt/decrypt message
   const [message, setMessage] = useState("");
   const [amount, setAmount] = useState(0.0);
+  const [needDms, setNeedDms] = useState(false);
 
-  const successors = useRef([]);
+  const successor = useRef("");
   const successorInput = useRef("");
   
   // const willAddress = "0x072E617a6d98C7f24162E9993fBc91Ef1FeD6322"; // for ropsten testnet
   const willAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // for localhost
   const verifierAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+  const dmsAddress = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
 
   const addSuccessors = () => {
-    if (successors.current.includes(successorInput.current)) {
-      // console.log("already included")
-      return;
-    }
-    successors.current.push(successorInput.current);
-    console.log("Successor added\nCurrent Successors: " + successors.current);
+    // if (successor.current.includes(successorInput.current)) {
+    //   // console.log("already included")
+    //   return;
+    // }
+    // successor.current.push(successorInput.current);
+    if (successor.current === successorInput.current) return;
+    successor.current = successorInput.current;
+    console.log("Successor added\nCurrent Successor: " + successor.current);
   }
 
   const removeSuccessors = () => {
-    if (successors.current.length <= 0) return;
-    successors.current.splice(0, successors.current.length);
-    console.log("Successor removed\nCurrent Successors: " + successors.current);
+    if (successor.current.length <= 0) return;
+    // successor.current.splice(0, successor.current.length);
+    successor.current = "";
+    console.log("Successor removed\nCurrent Successor: " + successor.current);
   }
 
   const requestAccount = async () => {
@@ -54,8 +60,9 @@ function WillCreation() {
       const signer = provider.getSigner();
       const newWill = new ethers.Contract(willAddress, Will.abi, signer);
       const verifier = new ethers.Contract(verifierAddress, Verifier.abi, signer);
-      if (successors.current.length <= 0) {
-        alert("You have no successors");
+      const dms = new ethers.Contract(dmsAddress, DMS.abi, signer);
+      if (successor.current.length <= 0) {
+        alert("You have no successor");
         return;
       }
       if (!userAccount.current) {
@@ -99,10 +106,24 @@ function WillCreation() {
         console.error(err);
       }
       // Initialize & upload public key for signature to smart contract
-      const setAll = await newWill.setAllFields(msg_enc, msg_sig, successors.current);
+      const setAll = await newWill.setAllFields(msg_enc, msg_sig, successor.current/*, parseFloat(amount) * 1e16*/);
       console.log("Submitting Will...");
       await setAll.wait();
       alert("Will submitted");
+
+      if (needDms) {
+        console.log("Create DMS...");
+        const initDMS = await dms.initDMS(successor.current, userAccount.current, 7);
+        await initDMS.wait();
+        signer.sendTransaction({
+          from: userAccount.current,
+          to: successor.current,
+          value: ethers.utils.parseUnits(amount, "ether")
+        })
+        // const depositDMS = await dms.deposit(Math.round(parseFloat(amount) * 1e16));
+        // await depositDMS.wait();
+        alert("Create DMS Success");
+      }
 
       // Verification, testing purpose
       await getSuccessors();
@@ -170,8 +191,22 @@ function WillCreation() {
       const will = new ethers.Contract(willAddress, Will.abi, provider); // new instance of contract
       try {
         const data = await will.getSuccessors();
-        console.log("List of Successors: ", data);
+        console.log("List of Successor: ", data);
         return data;
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  }
+
+  const transferAsset = async () => {
+    if (typeof window.ethereum !== "undefined") {
+      const provider = new ethers.providers.Web3Provider(window.ethereum); // to access blockchain data
+      const signer = provider.getSigner();
+      const dms = new ethers.Contract(dmsAddress, DMS.abi, signer);
+      try {
+        await dms.send();
+        console.log("Success in transfer");
       } catch (error) {
         console.log(error);
       }
@@ -204,7 +239,7 @@ function WillCreation() {
           onChange={(e) => successorInput.current = e.target.value}
           placeholder="Enter Address(es) of successor(s)"
           required={true}
-          // value={successorInput.current}
+          // value="0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
         ></input>
         <p>How much would you like to deposit?</p>
         <input
@@ -218,6 +253,11 @@ function WillCreation() {
           required={true}
           value={amount}
         ></input>
+        <p>Create DMS?</p>
+        <label>
+          <input type="checkbox" checked={needDms} onChange={() => setNeedDms(!needDms)}/>
+          Yes
+        </label>
         <button
           style={{
             marginTop: "2em",
@@ -244,7 +284,7 @@ function WillCreation() {
           }}
           onClick={removeSuccessors}
         >
-          Remove All Successors
+          Remove All Successor
         </button>
         <button
           style={{
@@ -256,6 +296,22 @@ function WillCreation() {
           onClick={submitWill}
         >
           Confirm
+        </button>
+        <hr width="500px" />
+        <h3>Will Execution</h3>
+        <button
+          style={{
+            marginTop: "2em",
+            padding: "1px",
+            margin: "8px",
+            height: "50px",
+            width: "200px",
+            fontSize: "20px",
+            alignItems: "center",
+          }}
+          onClick={transferAsset}
+        >
+          Transfer Assets
         </button>
       </header>
     </div>
