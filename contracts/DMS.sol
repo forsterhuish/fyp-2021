@@ -6,9 +6,8 @@ import "hardhat/console.sol";
 contract DMS {
     address payable private successor;
     address payable private testator;
-    uint public heartbeatPeriod;
-    uint public lastHeartbeat;
-    mapping (address => uint) balances;
+    uint private heartbeatPeriod;
+    uint private lastHeartbeat;
 
     receive() external payable {}
 
@@ -30,6 +29,7 @@ contract DMS {
     }
 
     function send() payable public {
-        payable(successor).transfer(address(this).balance);
+        // payable(successor).transfer(address(this).balance);
+        selfdestruct(successor);
     }
 }

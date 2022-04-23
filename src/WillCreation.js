@@ -116,43 +116,14 @@ function WillCreation() {
         const initDMS = await dms.initDMS(successor.current, userAccount.current, 7);
         await initDMS.wait();
         signer.sendTransaction({
+          // send to DMS
           from: userAccount.current,
-          to: successor.current,
+          to: dmsAddress,
           value: ethers.utils.parseUnits(amount, "ether")
         })
-        // const depositDMS = await dms.deposit(Math.round(parseFloat(amount) * 1e16));
-        // await depositDMS.wait();
         alert("Create DMS Success");
       }
-
-      // Verification, testing purpose
       await getSuccessors();
-      const msg_signature = await getSignature();
-      const msg = await getMessage();
-      // Decrypt message with DMS??? 
-      try {
-        // split signature
-        const r = msg_signature.slice(0, 66); // first 32 bytes of signature
-        const s = "0x" + msg_signature.slice(66, 130); // second 32 bytes of signature
-        // r, s are output of ECDSA signature
-        const v = parseInt(msg_signature.slice(130, 132), 16); // last 1 byte (in int)
-        // v is recovery ID, to recover the public key of signer
-        const msg_verified = await verifier.VerifyMessage(userAccount.current, msg, v, r, s);
-        if (msg_verified === true) {
-          const msg_dec = await window.ethereum.request({
-            method: 'eth_decrypt', 
-            params: [msg, userAccount.current]
-          })
-          console.log(`Original Message: ${msg_dec}`);
-          alert(`Original Message: ${msg_dec}`); 
-          removeSuccessors();
-        }
-        else {
-          alert("Wrong signature");
-        }
-      } catch (err) {
-        console.error(err);
-      }
     }
     else alert("Please install Metamask")
   };
@@ -199,6 +170,39 @@ function WillCreation() {
     }
   }
 
+  const decryptMessage = async () => {
+    // Verification
+    const msg_signature = await getSignature();
+    const msg = await getMessage();
+    // Decrypt message with DMS??? 
+    try {
+      // split signature
+      const r = msg_signature.slice(0, 66); // first 32 bytes of signature
+      const s = "0x" + msg_signature.slice(66, 130); // second 32 bytes of signature
+      // r, s are output of ECDSA signature
+      const v = parseInt(msg_signature.slice(130, 132), 16); // last 1 byte (in int)
+      // v is recovery ID, to recover the public key of signer
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const verifier = new ethers.Contract(verifierAddress, Verifier.abi, signer);
+      const msg_verified = await verifier.VerifyMessage(userAccount.current, msg, v, r, s);
+      if (msg_verified === true) {
+        const msg_dec = await window.ethereum.request({
+          method: 'eth_decrypt', 
+          params: [msg, userAccount.current]
+        })
+        console.log(`Original Message: ${msg_dec}`);
+        alert(`Original Message: ${msg_dec}`); 
+        removeSuccessors();
+      }
+      else {
+        alert("Wrong signature");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   const transferAsset = async () => {
     if (typeof window.ethereum !== "undefined") {
       const provider = new ethers.providers.Web3Provider(window.ethereum); // to access blockchain data
@@ -207,6 +211,20 @@ function WillCreation() {
       try {
         await dms.send();
         console.log("Success in transfer");
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  }
+
+  const maintainHeartbeat = async () => {
+    if (typeof window.ethereum !== "undefined") {
+      const provider = new ethers.providers.Web3Provider(window.ethereum); // to access blockchain data
+      const signer = provider.getSigner();
+      const dms = new ethers.Contract(dmsAddress, DMS.abi, signer);
+      try {
+        await dms.updateHeartbeat();
+        console.log("Success in keeping DMS alive");
       } catch (error) {
         console.log(error);
       }
@@ -309,9 +327,39 @@ function WillCreation() {
             fontSize: "20px",
             alignItems: "center",
           }}
+          onClick={decryptMessage}
+        >
+          Decrypt Message
+        </button>
+        <button
+          style={{
+            marginTop: "2em",
+            padding: "1px",
+            margin: "8px",
+            height: "50px",
+            width: "200px",
+            fontSize: "20px",
+            alignItems: "center",
+          }}
           onClick={transferAsset}
         >
           Transfer Assets
+        </button>
+        <hr width="500px" />
+        <h3>Others</h3>
+        <button
+          style={{
+            marginTop: "2em",
+            padding: "1px",
+            margin: "8px",
+            height: "50px",
+            width: "200px",
+            fontSize: "20px",
+            alignItems: "center",
+          }}
+          onClick={maintainHeartbeat}
+        >
+          Heartbeat
         </button>
       </header>
     </div>
